@@ -1,22 +1,15 @@
 #include <OneWire.h>
 #include <DallasTemperature.h>
-#include <WiFi.h>
-#include <Firebase_ESP_Client.h>
-#include <addons/TokenHelper.h> // Provides token status callback functions
-#include <addons/RTDBHelper.h>  // Provides RTDB status callback functions
+#include <WiFiS3.h>
+#include <ArduinoHttpClient.h>
 
 // WiFi credentials
 const char* ssid = "BoyPablo";
 const char* password = "_Wachitooo777";
 
-// Firebase project credentials
-#define API_KEY "g4EoSEaptOXyFrPpsJ1LKjCZzJBN5NMfr8Ibyxss" // Your Firebase project's Web API key
-#define DATABASE_URL "https://geomapper-d2b26-default-rtdb.asia-southeast1.firebasedatabase.app/" // Firebase RTDB URL
-
-// Initialize Firebase objects
-FirebaseData fbdo;
-FirebaseAuth auth;
-FirebaseConfig config;
+// Firebase project details
+const char* server = "geomapper-d2b26-default-rtdb.asia-southeast1.firebasedatabase.app";
+const int port = 443;
 
 // Temperature sensor pin
 #define ONE_WIRE_BUS 2
@@ -29,9 +22,11 @@ DallasTemperature sensors(&oneWire);
 unsigned long lastTime = 0;
 unsigned long timerDelay = 800;
 
-// Initialize Firebase and WiFi connection
+WiFiSSLClient wifi;
+HttpClient client = HttpClient(wifi, server, port);
+
 void setupWiFi() {
-  Serial.print("Connecting to WiFi");
+  Serial.println("Connecting to WiFi...");
   WiFi.begin(ssid, password);
 
   while (WiFi.status() != WL_CONNECTED) {
@@ -44,38 +39,21 @@ void setupWiFi() {
   Serial.println(WiFi.localIP());
 }
 
-void setupFirebase() {
-  // Set the API key for Firebase project
-  config.api_key = API_KEY;
-
-  // Assign the RTDB URL
-  config.database_url = DATABASE_URL;
-
-  // Enable anonymous sign-in
-  auth.user.email = "";
-  auth.user.password = "";
-
-  // Assign callback functions
-  config.token_status_callback = tokenStatusCallback; // Get Firebase token info
-
-  // Initialize Firebase
-  Firebase.begin(&config, &auth);
-  Firebase.reconnectWiFi(true);
-}
-
 void sendToFirebase(float temperature) {
-  if (Firebase.ready()) {
-    // Path in Firebase RTDB
-    String path = "/sensor_data";
+  String path = "/sensor_data.json";
+  String contentType = "application/json";
+  String postData = "{\"temperature\":" + String(temperature) + "}";
 
-    // Send data to Firebase Realtime Database
-    if (Firebase.RTDB.pushFloat(&fbdo, path.c_str(), temperature)) {
-      Serial.println("Data sent successfully");
-    } else {
-      Serial.print("Error sending data: ");
-      Serial.println(fbdo.errorReason());
-    }
-  }
+  client.post(path, contentType, postData);
+
+  // Read the response
+  int statusCode = client.responseStatusCode();
+  String response = client.responseBody();
+
+  Serial.print("Status code: ");
+  Serial.println(statusCode);
+  Serial.print("Response: ");
+  Serial.println(response);
 }
 
 void setup() {
@@ -87,9 +65,6 @@ void setup() {
 
   // Connect to WiFi
   setupWiFi();
-
-  // Initialize Firebase
-  setupFirebase();
 }
 
 void loop() {
