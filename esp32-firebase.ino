@@ -4,11 +4,11 @@
 #include <ArduinoHttpClient.h>
 
 // WiFi credentials
-const char* ssid = "BoyPablo";
-const char* password = "_Wachitooo777";
+const char* ssid = "SEASENSE";
+const char* password = "12345678";
 
 // Firebase project details
-const char* server = "geomapper-d2b26-default-rtdb.asia-southeast1.firebasedatabase.app";
+const char* server = "example.firebasedatabase.app";
 const int port = 443;
 
 // Temperature sensor pin
